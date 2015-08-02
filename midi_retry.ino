@@ -2,12 +2,12 @@
 
 #define QUANTIZATION 0 // set as 0 for none
 
-byte midi_start = 0xfa;
-byte midi_stop = 0xfc;
-byte midi_clock = 0xf8;
-byte midi_continue = 0xfb;
+//byte midi_start = 0xfa;
+//byte midi_stop = 0xfc;
+//byte midi_clock = 0xf8;
+//byte midi_continue = 0xfb;
+//bool play_flag = 0;
 
-bool play_flag = 0;
 byte data;
 
 byte midi_quarter_frame = 0xF1;
@@ -50,6 +50,8 @@ byte quarter_frame_time_data = 0;
 
 static int cur_beat = 0; // This will multiply time_factor to give us when to actually play a note
 
+static float cur_time_secs = 0.0;
+
 // Use WITHIN_DELTA(var,mid) to tell whether var is within preset DELTA of mid (use cur_beat)
 
 void setup() 
@@ -58,36 +60,34 @@ void setup()
   Serial.begin(31250);
   
   pinMode(11,OUTPUT);
+  pinMode(3,OUTPUT);
 }
 //MIDI TIMECODE TIME!!!
 
 void loop() 
 {
-  static float cur_time_secs = 0.0;
-  //TODO: change to a switch-case
   if(Serial.available() > 0) 
   {
     data = Serial.read();
-    if(data == midi_start || data == midi_continue)
-    {
-      play_flag = 1;
-//      digitalWrite(11,HIGH);
-    }
-    else if(data == midi_stop) 
-    {
-      play_flag = 0;
-      analogWrite(11,0);
-    }
-    else if( (data == midi_clock) && (play_flag == 1) ) 
-    {
-      if(0 == (count % CLOCKS_PER_EIGHTH_NOTE))
-      {
-        Sync();
-      }
-      count = (count+1) % CLOCKS_PER_BAR; // so 95 is max value of count
-      analogWrite(11,count*2);
-    }
-    else if( (data == midi_quarter_frame) )
+//    if(data == midi_start || data == midi_continue)
+//    {
+//      play_flag = 1;
+//    }
+//    else if(data == midi_stop) 
+//    {
+//      play_flag = 0;
+//      analogWrite(11,0);
+//    }
+//    else if( (data == midi_clock) && (play_flag == 1) ) 
+//    {
+//      if(0 == (count % CLOCKS_PER_EIGHTH_NOTE))
+//      {
+//        Sync();
+//      }
+//      count = (count+1) % CLOCKS_PER_BAR; // so 95 is max value of count
+//      analogWrite(11,count*2);
+//    }
+    if( (data == midi_quarter_frame) )
     {
       while(!Serial.available()){} // wait for next byte
       data = Serial.read();
@@ -106,17 +106,19 @@ void loop()
           break;
         case 3:
           cur_time_secs += quarter_frame_time_data << 4;
+          //check_time(cur_time_secs);
           break;
         case 4: //lsb's of mins
           cur_time_secs += 60 * (quarter_frame_time_data);
           check_time(cur_time_secs);
           break;
-//        case 5:
-//          cur_time_secs += 60 * (quarter_frame_time_data << 4);
-//          check_time(cur_time_secs);
-//          break;
+        case 5:
+          cur_time_secs += 60 * (quarter_frame_time_data << 4);
+          check_time(cur_time_secs);
+          break;
         // 6 and 7 are hours and are ignored for now
         default:
+          check_time(cur_time_secs);
           break;
       }
     }
@@ -136,15 +138,21 @@ static inline float framesToSec(int frames)
 // This will check the timecode to see if we are ready to play a note yet (close enough to a beat)
 static inline void check_time(float time)
 {
-  float time_under_delta = time - DELTA; // this tells us when to stop incrementing cur_beat if needed
+//  static bool toggle = HIGH;
+  analogWrite(3,time);
   if(WITHIN_DELTA(time,time_factor*cur_beat))
   {
+    cur_time_secs = 0;
     Sync();
+//    digitalWrite(3,toggle);
+//    toggle = !toggle;
     return;
   }
+  float time_under_delta = time - DELTA; // this tells us when to stop incrementing cur_beat if needed
   while(time_factor*cur_beat < time_under_delta)
   {
     cur_beat++;
+    analogWrite(11,cur_beat);
   }
 }
 
@@ -163,17 +171,22 @@ static inline void noteOn(byte cmd, note_t pitch, byte velocity)
   
 static inline void Sync() 
 {
-  static bool noteIsOn = 0;
-  if(noteIsOn == 0)
-  {
-    noteOn(0x90, note, 0x45);
-    noteIsOn = 1;
-  }
-  else
-  { 
-    noteOn(0x90, note, 0x00); // 0 velocity kills note
-    noteIsOn = 0;
-  }
+//  static bool noteIsOn = 0;
+  noteOn(0x90, note, 0x45);
+  noteOn(0x90, note, 0x00); // 0 velocity kills note
+//  static bool toggle = HIGH;
+//  digitalWrite(3,toggle);
+//  toggle = !toggle;
+//  if(noteIsOn == 0)
+//  {
+//    noteOn(0x90, note, 0x45);
+//    noteIsOn = 1;
+//  }
+//  else
+//  { 
+//    noteOn(0x90, note, 0x00); // 0 velocity kills note
+//    noteIsOn = 0;
+//  }
 }
 
 

@@ -3,13 +3,15 @@
 //#define ONE_OVER_16(float)0.0625
 //#define ONE_OVER_32 (float)0.03125
 
-#define BPM 130
-#define DEC_FACTOR 30 // 30 gives 8th notes (2*BPM is 8th notes, so 60/(2*BPM) is time per 8th note)
+#define BPM 120
+#define DEC_FACTOR 60 // 30 gives 8th notes (2*BPM is 8th notes, so 60/(2*BPM) is time per 8th note)
+// So 60 gives quarter notes
+
 #define FPS 25 // frames per second; for all the Studio One stuff I do
 //#define BPSec (float)BPM/60 //avoid using if possible (float division)\
 #define FRAMES_PER_BEAT (FPS/BPM)*60 // beats = quarter notes
 #define BEATS_PER_FRAME (BPM/(60*FPS)) // so now we have how many quarter frames it takes for a quarter note!
-static const float time_factor = (float)DEC_FACTOR/(float)BPM;
+static const float time_factor = (float)DEC_FACTOR/(float)BPM; // 0.461538 for 60/130
 static const float secs_per_frame = 1.0/(float)FPS;
 
 #define CLOCKS_PER_QUARTER_NOTE 24
@@ -18,7 +20,7 @@ static const float secs_per_frame = 1.0/(float)FPS;
 
 #define CLOCKS_PER_BAR 96
 
-#define DELTA 0.18*time_factor
+static const float DELTA = .45*time_factor;
 
 #define WITHIN_DELTA(var,mid) ((var > (mid-DELTA)) && (var < (mid+DELTA))) ? 1 : 0
 
