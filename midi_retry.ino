@@ -46,6 +46,7 @@ use ran.int32() for random num in range of:
 
 note_t note = D5_n;
 int count = 0;
+byte quarter_frame_time_data = 0;
 
 static int cur_beat = 0; // This will multiply time_factor to give us when to actually play a note
 
@@ -90,25 +91,66 @@ void loop()
     {
       while(!Serial.available()){} // wait for next byte
       data = Serial.read();
-      switch(data >> 4) // the 
+      quarter_frame_time_data = data & 0b00001111; //zero out top half of byte
+      data = data >> 4;
+      switch(data) // tells which data we're getting
+      {
+        case 0: //lsb's of frame
+          cur_time_secs += framesToSec(quarter_frame_time_data);
+          break;
+        case 1:
+          cur_time_secs += framesToSec(quarter_frame_time_data << 4);
+          break;
+        case 2: //lsb's of seconds
+          cur_time_secs += quarter_frame_time_data;
+          break;
+        case 3:
+          cur_time_secs += quarter_frame_time_data << 4;
+          break;
+        case 4: //lsb's of mins
+          cur_time_secs += 60 * (quarter_frame_time_data);
+          check_time(cur_time_secs);
+          break;
+//        case 5:
+//          cur_time_secs += 60 * (quarter_frame_time_data << 4);
+//          check_time(cur_time_secs);
+//          break;
+        // 6 and 7 are hours and are ignored for now
+        default:
+          break;
+      }
     }
   }
 }
 
-
-
+/* ---------------- Local Functions: ---------------------- */
 
 static inline float framesToSec(int frames)
 {
   if(frames == 0) // Don't divide by 0
     return 0;
   else
-    return 1.0/frames;
+    return ( (float)frames * secs_per_frame ); //(secs / frames) * frames = secs
+}
+
+// This will check the timecode to see if we are ready to play a note yet (close enough to a beat)
+static inline void check_time(float time)
+{
+  float time_under_delta = time - DELTA; // this tells us when to stop incrementing cur_beat if needed
+  if(WITHIN_DELTA(time,time_factor*cur_beat))
+  {
+    Sync();
+    return;
+  }
+  while(time_factor*cur_beat < time_under_delta)
+  {
+    cur_beat++;
+  }
 }
 
 
 
-/* ---------------- Functions using globals: ---------------------- */
+/* ---------------- Local Functions using globals: ---------------------- */
 
 static inline void noteOn(byte cmd, note_t pitch, byte velocity) 
 {
@@ -122,17 +164,14 @@ static inline void noteOn(byte cmd, note_t pitch, byte velocity)
 static inline void Sync() 
 {
   static bool noteIsOn = 0;
-// do something for every MIDI Clock pulse when the sequencer is running
-  //Note on channel 1 (0x90), some note value (note), middle velocity (0x45):
   if(noteIsOn == 0)
   {
     noteOn(0x90, note, 0x45);
     noteIsOn = 1;
   }
-  //Note on channel 1 (0x90), some note value (note), silent velocity (0x00):
   else
-  {
-    noteOn(0x90, note, 0x00);
+  { 
+    noteOn(0x90, note, 0x00); // 0 velocity kills note
     noteIsOn = 0;
   }
 }

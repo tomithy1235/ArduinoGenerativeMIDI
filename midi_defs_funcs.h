@@ -9,7 +9,8 @@
 //#define BPSec (float)BPM/60 //avoid using if possible (float division)\
 #define FRAMES_PER_BEAT (FPS/BPM)*60 // beats = quarter notes
 #define BEATS_PER_FRAME (BPM/(60*FPS)) // so now we have how many quarter frames it takes for a quarter note!
-static const float time_factor = DEC_FACTOR/BPM;
+static const float time_factor = (float)DEC_FACTOR/(float)BPM;
+static const float secs_per_frame = 1.0/(float)FPS;
 
 #define CLOCKS_PER_QUARTER_NOTE 24
 #define CLOCKS_PER_EIGHTH_NOTE 12
@@ -81,7 +82,7 @@ static const float timeToBeats[] =
   0, time_factor, 2*time_factor, 3*time_factor, 4*time_factor, 5*time_factor,
   6*time_factor, 7*time_factor, 8*time_factor, 9*time_factor, 10*time_factor
   
-}
+};
   
   
   enum note_t
